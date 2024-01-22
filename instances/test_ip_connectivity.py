@@ -1,19 +1,40 @@
 import json
+from googleapiclient import discovery
+from google.oauth2 import service_account
+
+# Set up credentials and API client
+credentials = service_account.Credentials.from_service_account_file(
+    'path/to/your/service/account/key.json',
+    scopes=['https://www.googleapis.com/auth/cloud-platform']
+)
+api = discovery.build('compute', 'v1', credentials=credentials)
 
 # TEST 1: Test between VM instances in a VPC Network
-
 test_input = {
     "source": {
         "instance": "sdl22-dc-02",
         "ipAddress": "35.231.108.30",
         "projectId": "145833268326172270"
     },
-    "protocol": "PROTOCOL",  # Replace with the specific protocol you want to test (e.g., "TCP" or "UDP")
+    "protocol": "ICMP",  # Replace with the specific protocol you want to test (e.g., "TCP" or "UDP")
 }
 
+# Replace 'your-project-id' with your actual project ID
+project_id = "145833268326172270"
+
+# Replace 'your-unique-test-id' with a unique test ID
+test_id = "T-02"
+
+# Replace 'your-location' with the appropriate location
+location = "global"
+
+# Create the parent path
+parent = f"projects/145833268326172270/locations/global"
+
+# Create the request
 request = api.projects().locations().global_().connectivityTests().create(
-    parent="projects/PROJECT_ID/locations/global",
-    testId="TEST_ID",  # Replace with a unique test ID
+    parent=parent,
+    testId=test_id,
     body=test_input
 )
 
