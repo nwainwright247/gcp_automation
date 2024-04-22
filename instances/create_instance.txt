@@ -1,0 +1,61 @@
+@echo off
+SETLOCAL EnableDelayedExpansion
+
+
+REM set the region / zone
+set region=us-east1
+set zone=us-east1-d
+
+REM set machine config and type
+set machine_type=n2-standard-4
+
+REM set boot disk settings
+set os=windows-2022
+set boot_disk_type=pd-ssd
+set boot_disk_size=50GB
+set deletion_rule=delete
+
+REM set identity and API access
+set access_scopes=default
+
+REM set observability - OPS Agent
+set ops_agent=install
+
+REM set advanced options - networking
+set network_tags=allow-rdp-from-office,lb-health-checks
+set network_interface_card=virtio
+set network=sdl-lan-google
+set subnetwork=sdl-lan-google-03
+
+REM set network interfaces settings
+set ip_stack=ipv4
+set primary_internal_ip=static
+set external_ip=static
+set network_service_tier=premium
+
+REM set security options
+set vtpm=true
+set integrity_monitoring=true
+
+
+REM now loop through county names from the CSV file
+for /F "skip=1 tokens=1,2 delims=," %%A in (counties.csv -F) do (
+
+    REM build name from county
+    set instance_name=sdl22-%%A-01
+
+    REM create instance
+    gcloud compute instances create sdl22-%%A-01 --zone=%zone% --machine-type=%machine_type%^
+    --create-disk=auto-delete=yes,boot=yes,device-name=instance-20240405-191342,image=projects/sdl-lan/global/images/sdl22-county-01,mode=rw,size=100,type=projects/sdl-lan/zones/us-central1-a/diskTypes/pd-ssd^
+    --create-disk=device-name=sdl22-%%A-01-e,disk-resource-policy=projects/sdl-lan/regions/us-central1/resourcePolicies/daily,mode=rw,name=disk-1,size=1000,type=projects/sdl-lan/zones/us-central1-a/diskTypes/pd-ssd^
+    --network=%network% --subnet=%subnetwork% --tags=%network_tags% --scopes=%access_scopes% --metadata=enable-oslogin=true --private-network-ip=10.3.0.%%B
+
+
+    gcloud compute disks snapshot-schedule sdl22-%%A-01 --snapshot-schedule="0 0 * * 0#2"
+
+  
+    gcloud compute disks snapshot-schedule sdl22-%%A-01-e --snapshot-schedule="0 0 * * *"
+)
+
+
+endlocal

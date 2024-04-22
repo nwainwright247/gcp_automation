@@ -36,22 +36,9 @@ REM set security options
 set vtpm=true
 set integrity_monitoring=true
 
-REM set "adcreds=New-Object System.Management.Automation.PSCredential(\"spatialdatalog\jkennedy\", (ConvertTo-SecureString \"Password399:)\" -AsPlainText -Force))"
-
-set adcreds = New-Object pscredential -ArgumentList ([pscustomobject]@{^
-    UserName = spatialdatalog\jkennedy^
-    Password = (ConvertTo-SecureString -String 'Password399:)' -AsPlainText -Force)[0]^
-})
-
-REM verify existing disks and determine the highest disk number
-for /f "tokens=2 delims=-" %%D in ('gcloud compute disks list --format="value(name)"') do (
-    for /f "tokens=2 delims=-" %%N in ("%%D") do (
-        if %%N gtr !disk_count! set /a disk_count=%%N
-    )
-)
-
-REM increment the disk count to prepare for next available disk
-set /a disk_count+=1
+REM set domain join credentials
+set domain_username=spatialdatalog\jkennedy
+set domain_password=Password399:)
 
 REM now loop through county names from the CSV file
 for /F "skip=1 tokens=1,2 delims=," %%A in (counties_test.csv -F) do (
@@ -59,16 +46,12 @@ for /F "skip=1 tokens=1,2 delims=," %%A in (counties_test.csv -F) do (
     REM build name from county
     set instance_name=sdl22-%%A-01
 
-    REM create instance
+    REM create instance and join to domain
     gcloud compute instances create sdl22-%%A-01 --zone=%zone% --machine-type=%machine_type%^
     --create-disk=auto-delete=yes,boot=yes,device-name=sdl22-%%A-01,image=projects/sdl-lan/global/images/sdl22-county-01,mode=rw,size=100,type=projects/sdl-lan/zones/us-central1-a/diskTypes/pd-ssd^
     --create-disk=device-name=sdl22-%%A-01-e,mode=rw,name=disk-1,size=1000,type=projects/sdl-lan/zones/us-east1-d/diskTypes/pd-ssd^
     --network=%network% --subnet=%subnetwork% --tags=%network_tags% --scopes=%access_scopes% --private-network-ip=10.3.0.%%B^
-    --metadata=windows-startup-script-ps1="Add-Computer -ComputerName %%A-01 -DomainName sdldesktop.com -Credential %adcreds% -Restart',enable-oslogin=true
-
-    REM gcloud compute disks snapshot-schedule sdl22-%%A-01 --snapshot-schedule="0 0 * * 0#2"
-    REM gcloud compute disks snapshot-schedule sdl22-%%A-01-e --snapshot-schedule="0 0 * * *"
+    --metadata=windows-startup-script-ps1="Add-Computer -ComputerName %%A-01 -DomainName spatialdatalogic.com -Credential (New-Object System.Management.Automation.PSCredential ('%domain_username%', (ConvertTo-SecureString '%domain_password%' -AsPlainText -Force))) -Restart",enable-oslogin=true
 )
-
 
 endlocal
